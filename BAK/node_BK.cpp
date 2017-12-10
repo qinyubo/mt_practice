@@ -76,9 +76,6 @@ int pick_receiver(){  //randomly pickup a rank as receiver
 
 int pick_task(){ //pick a task for worker to execute
 	int task_id;
-	pthread_mutex_lock(&mutex_debug);
-		cout << "I am in pick_task()" <<endl;
-		pthread_mutex_unlock(&mutex_debug);
 
 	srand(time(NULL));
 	task_id = rand() % TASK_NUM;
@@ -87,9 +84,6 @@ int pick_task(){ //pick a task for worker to execute
 }
 
 void run_task(int task_id, int rank, int thrd_id){
-	pthread_mutex_lock(&mutex_debug);
-		cout << "NUM 5 I am rank " << rank << " worker thred #" << thrd_id <<endl;
-		pthread_mutex_unlock(&mutex_debug);
 
 	switch(task_id){
 		case 0:
@@ -155,6 +149,13 @@ void *master_thrd(void *arg){
 	mythrd = (long)arg;
 	MPI_Comm_rank (MPI_COMM_WORLD, &myrank);
 
+	//update master thread status
+	/*
+	pthread_mutex_lock(&mutex);
+	thrd_status.status[mythrd] = 1; //means busy
+	thrd_status.total_busy_thread += 1;
+	pthread_mutex_unlock(&mutex);
+	*/
 
 	//Init buffer
 	for(int i=0; i<100; i++){
@@ -168,10 +169,12 @@ void *master_thrd(void *arg){
 
 
 	while(task_budget > 0){
-		pthread_mutex_lock(&mutex_debug);
-		cout << "PIN9 I am rank " << myrank << " master thred #" << mythrd <<endl;
-		pthread_mutex_unlock(&mutex_debug);
 
+		pthread_mutex_lock(&mutex_debug);
+		cout << "PIN2 Debug: I am rank " << myrank << " master thred #" << mythrd << " In while looping"\
+		<< " sending_queue empty=" << sending_queue.empty() << " received_queue empty=" << received_queue.empty() \
+		<<"  task_budget= "<<task_budget<<endl;
+		pthread_mutex_unlock(&mutex_debug);	
 
 		// Sending MPI message 
 		pthread_mutex_lock(&mutex);
@@ -180,37 +183,46 @@ void *master_thrd(void *arg){
 			sending_queue.pop();
 			//wr_send[0] = task_id;
 			receiver_rank = pick_receiver();
-			pthread_mutex_lock(&mutex_debug);
-			cout << "PIN2 I am rank " << myrank << " master thred #" << mythrd <<endl;
-			pthread_mutex_unlock(&mutex_debug);
 		pthread_mutex_unlock(&mutex);
 
+		pthread_mutex_lock(&mutex_debug);
+		cout << "PIN3 Debug: I am rank " << myrank << " master thred #" << mythrd << " receiver_rank= " << receiver_rank <<endl;
+		pthread_mutex_unlock(&mutex_debug);	
 
 			if (receiver_rank >= 0){
 				MPI_Send(&task_id, sizeof(int)+1, MPI_INT, receiver_rank, 0, MPI_COMM_WORLD);
 				pthread_mutex_lock(&mutex_debug);
-				cout << "PIN3 I am rank " << myrank << " master thred #" << mythrd <<endl;
-				pthread_mutex_unlock(&mutex_debug);
+				cout << "PIN4 Debug: I am rank " << myrank << " master thred #" << mythrd << " SEND!"<<endl;
+				cout << "Debug: sending_queue empty=" << sending_queue.empty() << " received_queue empty=" << received_queue.empty() <<endl;
+				pthread_mutex_unlock(&mutex_debug);	
 			}
 			else{
-				Finalize_my_task();
 				pthread_mutex_lock(&mutex_debug);
-				cout << "PIN4 I am rank " << myrank << " master thred #" << mythrd <<endl;
-				pthread_mutex_unlock(&mutex_debug);
+				cout << "PIN5 Debug: I am rank " << myrank << " master thred #" << mythrd << "going to finalize my task"<<endl;
+				//cout << "Debug: sending_queue empty=" << sending_queue.empty() << " received_queue empty=" << received_queue.empty() <<endl;
+				pthread_mutex_unlock(&mutex_debug);	
+				Finalize_my_task();
 			}
 		}
-		
-		if(myrank == 0){
-			sender_rank = 1;
+		else{
+
+				pthread_mutex_lock(&mutex_debug);
+				cout << "PIN5 Debug: I am rank " << myrank << " master thred #" << mythrd << " sending_queue EMPTY!"<<endl;
+				//cout << "Debug: sending_queue empty=" << sending_queue.empty() << " received_queue empty=" << received_queue.empty() <<endl;
+				pthread_mutex_unlock(&mutex_debug);	
+				continue;
+
 		}
-		else
-			sender_rank = 0;
-	
+		
+
+
 		// Listen and receive MPI message 
-		err = MPI_Recv(&task_id, sizeof(int), MPI_INT, sender_rank, MPI_ANY_TAG, MPI_COMM_WORLD, &mpi_status);
+		err = MPI_Recv(&task_id, sizeof(int), MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &mpi_status);
 		pthread_mutex_lock(&mutex_debug);
-		cout << "PIN5 I am rank " << myrank << " master thred #" << mythrd <<endl;
-		pthread_mutex_unlock(&mutex_debug);
+		cout << "PIN 6 Debug: I am rank " << myrank << " master thred #" << mythrd << " RECEIVED!"<<endl;
+		cout << "Debug: sending_queue empty=" << sending_queue.empty() << " received_queue empty=" << received_queue.empty() <<endl;
+		pthread_mutex_unlock(&mutex_debug);	
+
 
 		if (err == MPI_SUCCESS){
 		pthread_mutex_lock(&mutex);
@@ -218,19 +230,31 @@ void *master_thrd(void *arg){
 		received_queue.push(task_id);
 		//wr_get[0] = 0;
 		pthread_mutex_unlock(&mutex);
-		pthread_mutex_lock(&mutex_debug);
-		cout << "PIN6 I am rank " << myrank << " master thred #" << mythrd <<endl;
-		pthread_mutex_unlock(&mutex_debug);
 
-		}
 		pthread_mutex_lock(&mutex_debug);
-		cout << "PIN7 I am rank " << myrank << " master thred #" << mythrd <<endl;
-		pthread_mutex_unlock(&mutex_debug);
+		cout << "PIN 7 Debug: I am rank " << myrank << " master thred #" << mythrd << " PUSHED!"<<endl;
+		cout << "Debug: sending_queue empty=" << sending_queue.empty() << " received_queue empty=" << received_queue.empty() <<endl;
+		pthread_mutex_unlock(&mutex_debug);	
+		}
+
+
 
 	}
+
+
+	//update master thread status
+	/*
+	pthread_mutex_lock(&mutex);
+	thrd_status.status[mythrd] = 0; //means idle
+	thrd_status.total_busy_thread -= 1;
+	pthread_mutex_unlock(&mutex);
+	*/
+
+	//return; //finish work, back to multithreading() 
 		pthread_mutex_lock(&mutex_debug);
-		cout << "PIN8 I am rank " << myrank << " master thred #" << mythrd <<"DONE!"<<endl;
-		pthread_mutex_unlock(&mutex_debug);
+		cout << "Debug: I am rank " << myrank << " master thred #" << mythrd << " DONE!!"<<endl;
+		//cout << "Debug: sending_queue empty=" << sending_queue.empty() << " received_queue empty=" << received_queue.empty() <<endl;
+		pthread_mutex_unlock(&mutex_debug);	
 
 }
 
@@ -254,19 +278,15 @@ void *worker_thrd(void *arg){
 	pthread_mutex_unlock(&mutex_debug);
 
 	while(task_budget > 0){//keep looping
-		/*
-		pthread_mutex_lock(&mutex_debug);
-		cout << "NUM 1 I am rank " << myrank << " worker thred #" << mythrd <<endl;
-		pthread_mutex_unlock(&mutex_debug);
-		*/
+		
 		//fetch work request from received pending queue
-		if(!received_queue.empty()){
-			pthread_mutex_lock(&mutex_debug);
-			cout << "NUM 2 I am rank " << myrank << " worker thred #" << mythrd <<endl;
-			pthread_mutex_unlock(&mutex_debug);
+		if(! received_queue.empty()){
 
 			pthread_mutex_lock(&mutex);
-
+			//update thread status
+			//thrd_status.status[mythrd] = 1; //means busy
+			//thrd_status.total_busy_thread += 1;
+			
 			//fetch work request from received queue, temporarily just task id
 			wr_get = received_queue.front();
 			received_queue.pop();
@@ -279,31 +299,43 @@ void *worker_thrd(void *arg){
 			
 			//task_id for next work request
 			wr_send = pick_task();
-			pthread_mutex_lock(&mutex_debug);
-			cout << "NUM 3 I am rank " << myrank << " worker thred #" << mythrd <<endl;
-			pthread_mutex_unlock(&mutex_debug);
 			
+			//pthread_mutex_lock(&mutex);
+			//cout << "Debug: I am rank " << myrank << " worker thred #" << mythrd << "wr_send=" <<wr_send<<endl;
+			//pthread_mutex_unlock(&mutex);
 			
 			//put work request into sending queue
 			pthread_mutex_lock(&mutex);
 			//list_add(&wr_send->wr_entry, &tk_queue->sending_queue);
 			sending_queue.push(wr_send);
-			pthread_mutex_lock(&mutex_debug);
-			cout << "NUM 4 I am rank " << myrank << " worker thred #" << mythrd <<endl;
-			pthread_mutex_unlock(&mutex_debug);
-			
+			//update thread status
+			//thrd_status.status[mythrd] = 0; //means idle
+			//thrd_status.total_busy_thread -= 1;			
 			pthread_mutex_unlock(&mutex);
+
+			pthread_mutex_lock(&mutex_debug);
+			cout << "Debug: I am rank " << myrank << " worker thred #" << mythrd <<" wr_send="<< wr_send << " PUSHED! sending_queue empty=" \
+			<< sending_queue.empty() << " received_queue empty=" << received_queue.empty() \
+			<<" task_budget= "<<task_budget<<endl;
+			pthread_mutex_unlock(&mutex_debug);	
 
 			//update 
 			
 		}//end of if	
+
+			//pthread_mutex_lock(&mutex);
+			//cout << "Debug: I am rank " << myrank << " worker thred #" << mythrd << " In while looping"<<endl;
+			//pthread_mutex_unlock(&mutex);
 	}//end of while
-	pthread_mutex_lock(&mutex_debug);
-			cout << "NUM 6 I am rank " << myrank << " worker thred #" << mythrd <<"DONE!"<<endl;
-			pthread_mutex_unlock(&mutex_debug);
+
+		pthread_mutex_lock(&mutex_debug);
+		cout << "Debug: I am rank " << myrank << " woker thred #" << mythrd << " DONE!"<<endl;
+		//cout << "Debug: sending_queue empty=" << sending_queue.empty() << " received_queue empty=" << received_queue.empty() <<endl;
+		pthread_mutex_unlock(&mutex_debug);	
 
 	//return; //back to multithreading
 }
+
 
 
 /*for debugging */
@@ -314,12 +346,9 @@ int i, myrank;
 	mythrd = (long)arg;
 	MPI_Comm_rank (MPI_COMM_WORLD, &myrank);
 
-	for(i=0; i<10;i++){
 	pthread_mutex_lock(&mutex);
 	printf("Master say hi from rank %d thread %ld. \n", myrank, mythrd);
-	sleep(1);
 	pthread_mutex_unlock(&mutex);
-	}
 
 	pthread_exit((void*)0);
 
@@ -333,16 +362,20 @@ int i, myrank;
 	mythrd = (long)arg;
 	MPI_Comm_rank (MPI_COMM_WORLD, &myrank);
 
-	for(i=0; i<10; i++){
 	pthread_mutex_lock(&mutex);
 	printf("Worker say hi from rank %d thread %ld. \n", myrank, mythrd);
-	sleep(1);
 	pthread_mutex_unlock(&mutex);
-	}
 
 	pthread_exit((void*)0);
 
 }
+
+
+
+
+
+
+
 
 
 
@@ -364,8 +397,8 @@ void *status;
 /*Create thread attribute to specify that the main thread needs
 to join with the threads it create.
 */
-	//pthread_attr_init(&attr);
-	//pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
 	/*Create mutex*/
 	pthread_mutex_init(&mutex, NULL);
@@ -382,24 +415,14 @@ to join with the threads it create.
 	numthrds = MAXTHRDS;
 
 	for(j=0; j<numthrds; j++){
-		if(j==0){ //master thread
-			pthread_create(&callThd[j], NULL, master_test, (void *)j);
-			pthread_mutex_lock(&mutex_debug);
-			cout << "Debug: create master thread"<<endl;
-			//cout << "Debug: sending_queue empty=" << sending_queue.empty() << " received_queue empty=" << received_queue.empty() <<endl;
-			pthread_mutex_unlock(&mutex_debug);	
-		}
-		else{
-			pthread_create(&callThd[j], NULL, worker_test, (void *)j);
-			pthread_mutex_lock(&mutex_debug);
-			cout << "Debug: create worker thread"<<endl;
-			//cout << "Debug: sending_queue empty=" << sending_queue.empty() << " received_queue empty=" << received_queue.empty() <<endl;
-			pthread_mutex_unlock(&mutex_debug);	
-		}
+		if(j==0) //master thread
+			pthread_create(&callThd[j], &attr, master_thrd, (void *)j);
+		else
+			pthread_create(&callThd[j], &attr, worker_thrd, (void *)j);
 	}
 
 	/*Release the thread attribute handle*/
-	//pthread_attr_destroy(&attr);
+	pthread_attr_destroy(&attr);
 
 	/*Wait for the other threads within this node*/
 	for(i=0; i<numthrds; i++){
@@ -408,18 +431,11 @@ to join with the threads it create.
 		cout << "Debug: I am at multithreading() pthread_join"<<endl;
 		//cout << "Debug: sending_queue empty=" << sending_queue.empty() << " received_queue empty=" << received_queue.empty() <<endl;
 		pthread_mutex_unlock(&mutex_debug);	
-
 	}
 
 	/*Release mutex*/
-	pthread_mutex_lock(&mutex_debug);
-	cout << "Debug: before destroy mutex"<<endl;
-		//cout << "Debug: sending_queue empty=" << sending_queue.empty() << " received_queue empty=" << received_queue.empty() <<endl;
-	pthread_mutex_unlock(&mutex_debug);	
 	pthread_mutex_destroy(&mutex);
 	pthread_mutex_destroy(&mutex_debug);
-
-	cout << "Debug: after destroy mutex"<<endl;
 
 	return 0;
 
@@ -430,10 +446,11 @@ to join with the threads it create.
 int main(int argc, char** argv){
 
 	int world_rank, world_size;
-	int provided;
+	int* provide;
 
-	//MPI_Init(&argc, &argv);
-
+	MPI_Init(&argc, &argv);
+	MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+	MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
 	MPI_Init_thread(&argc,&argv,MPI_THREAD_MULTIPLE, &provided);  
 	if(provided != MPI_THREAD_MULTIPLE)  
@@ -441,9 +458,6 @@ int main(int argc, char** argv){
    		 cout << "MPI do not Support Multiple thread" << endl;  
    		 exit(0);  
 	} 
-
-	MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
-	MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
 
 	multithreading();

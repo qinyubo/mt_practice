@@ -7,4 +7,4 @@ node.o: node.cpp
 	mpic++ -c node.cpp -o node.o
 
 clean:
-	rm -f node.o 
+	rm -f node.o node
