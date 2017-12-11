@@ -100,17 +100,17 @@ void run_task(int task_id, int rank, int thrd_id){
 
 		case 1:
 			cout << "Task 1: rank " << rank << " thrd_id " << thrd_id << " sleep 2 sec." <<endl; 
-			sleep(1);
+			sleep(2);
 			break;
 
 		case 2:
 			cout << "Task 2: rank " << rank << " thrd_id " << thrd_id << " sleep 3 sec." <<endl; 
-			sleep(1);
+			sleep(3);
 			break;
 
 		case 3:
 			cout << "Task 3: rank " << rank << " thrd_id " << thrd_id << " sleep 4 sec." <<endl; 
-			sleep(1);
+			sleep(4);
 			break;
 
 		default :
@@ -197,7 +197,7 @@ void *master_thrd(void *arg){
 			pthread_mutex_unlock(&mutex_debug);
 			*/
 
-			
+/*			
 			if (receiver_rank >= 0){
 
 
@@ -210,6 +210,19 @@ void *master_thrd(void *arg){
 			else{ //last MPI process, process all left over tasks by itself
 				Finalize_my_task();
 			}
+*/
+				if(myrank == 0){
+					receiver_rank = 1;
+				}
+				else
+					receiver_rank = 0;
+
+
+				MPI_Send(&task_id, 16, MPI_INT, receiver_rank, 0, MPI_COMM_WORLD);
+				
+				pthread_mutex_lock(&mutex_debug);
+				cout << "Rank "<<myrank<< " SEND! to rank="<<receiver_rank<<endl;
+				pthread_mutex_unlock(&mutex_debug);
 			
 			pthread_mutex_unlock(&mutex);		
 			//continue;
@@ -237,17 +250,25 @@ void *master_thrd(void *arg){
 			MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &flag, &mpi_status);
 		}
 		*/
-			MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &flag, &mpi_status);
+
+			if(myrank == 0){
+				sender_rank = 1;
+			}
+			else
+				sender_rank = 0;
+
+
+			MPI_Iprobe(sender_rank, MPI_ANY_TAG, MPI_COMM_WORLD, &flag, &mpi_status);
 
 			if(flag){
 				// Listen and receive MPI message 
 				pthread_mutex_lock(&mutex);	
-				err = MPI_Recv(&task_id, 256, MPI_INT, mpi_status.MPI_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &mpi_status);
+				err = MPI_Recv(&task_id, 256, MPI_INT, sender_rank, MPI_ANY_TAG, MPI_COMM_WORLD, &mpi_status);
 
 				if (err == MPI_SUCCESS){
 					received_queue.push(task_id);
 						pthread_mutex_lock(&mutex_debug);
-						cout << "Rank "<<myrank<< "RECEIVED! from rank="<<mpi_status.MPI_SOURCE<<endl;
+						cout << "Rank "<<myrank<< "RECEIVED! from rank="<<sender_rank<<endl;
 						cout << "I am rank " << myrank << " master thred #" << mythrd <<" current sending_queue size="<<sending_queue.size()\
 						<<" received_queue size="<<received_queue.size()<<endl;
 						pthread_mutex_unlock(&mutex_debug);			
@@ -275,16 +296,9 @@ void *master_thrd(void *arg){
 			}
 			*/
 			else{
-				/*
-				MPI_Comm_size(MPI_COMM_WORLD, &mysize);
-				if(mysize<=1){
-				pthread_mutex_lock(&mutex_debug);
-				cout << "Flag false, myrank= " << myrank << " Current size=" << mysize <<endl;
-				pthread_mutex_unlock(&mutex_debug);
-				}
-				*/
 
 				continue;
+				
 			}
 			
 			
