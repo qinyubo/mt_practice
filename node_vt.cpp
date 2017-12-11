@@ -132,12 +132,12 @@ void Finalize_my_task(){ //move all task in sending queue to received queue,
 
 
 
-//	pthread_mutex_lock(&mutex);
+	pthread_mutex_lock(&mutex);
 	while (!sending_queue.empty()){
 		received_queue.push(sending_queue.front());
 		sending_queue.pop();
 	}
-//	pthread_mutex_unlock(&mutex);
+	pthread_mutex_unlock(&mutex);
 
 	return;
 }
@@ -171,15 +171,14 @@ void *master_thrd(void *arg){
 
 	while(task_budget > 0){
 		pthread_mutex_lock(&mutex_debug);
-		cout << "PIN9 I am rank " << myrank << " master thred #" << mythrd << " task_budget= " <<task_budget <<endl;
+		cout << "PIN9 I am rank " << myrank << " master thred #" << mythrd <<endl;
 		pthread_mutex_unlock(&mutex_debug);
 
 
 		// Sending MPI message 
 		err_lock = pthread_mutex_trylock(&mutex);
 		if(err_lock == EBUSY){
-//		cout << "#1 Mutex lock busy rank " << myrank << " master thred #" << mythrd <<endl;
-		continue;
+		cout << "#1 Mutex lock busy rank " << myrank << " master thred #" << mythrd <<endl;
 }
 
 		else if(!sending_queue.empty()){
@@ -208,7 +207,6 @@ void *master_thrd(void *arg){
 			}
 		pthread_mutex_unlock(&mutex);		
 		}
-		else pthread_mutex_unlock(&mutex);	
 		
 
 		pthread_mutex_lock(&mutex_debug);
@@ -278,24 +276,18 @@ void *worker_thrd(void *arg){
 		pthread_mutex_unlock(&mutex_debug);
 		*/
 		//fetch work request from received pending queue
-		err_lock = pthread_mutex_trylock(&mutex);
-		if(err_lock == EBUSY){
-		//cout << "#2 Mutex lock busy rank " << myrank << " worker thred #" << mythrd <<endl;
-		continue;
-		}
-		else if(!received_queue.empty()){ 		
-		
+		if(!received_queue.empty()){
 			pthread_mutex_lock(&mutex_debug);
 			cout << "NUM 2 I am rank " << myrank << " worker thred #" << mythrd <<endl;
 			pthread_mutex_unlock(&mutex_debug);
 
-			//pthread_mutex_lock(&mutex);
+			pthread_mutex_lock(&mutex);
 
 			//fetch work request from received queue, temporarily just task id
 			wr_get = received_queue.front();
 			received_queue.pop();
 			task_budget -= 1; 
-			//pthread_mutex_unlock(&mutex);
+			pthread_mutex_unlock(&mutex);
 
 			task_id = wr_get;
 			//execute task
@@ -309,21 +301,23 @@ void *worker_thrd(void *arg){
 			
 			
 			//put work request into sending queue
-					
+			err_lock = pthread_mutex_trylock(&mutex);
+			if(err_lock == EBUSY){
+			cout << "#2 Mutex lock busy rank " << myrank << " worker thred #" << mythrd <<endl;
+			}
+			else{			
 			//list_add(&wr_send->wr_entry, &tk_queue->sending_queue);
 				sending_queue.push(wr_send);
 
-				
-		
+				pthread_mutex_unlock(&mutex);
+			}
 
 			pthread_mutex_lock(&mutex_debug);
 			cout << "NUM 4 I am rank " << myrank << " worker thred #" << mythrd <<endl;
 			pthread_mutex_unlock(&mutex_debug);
 			//update 
-		pthread_mutex_unlock(&mutex);
 			
-		}//end of if
-		else pthread_mutex_unlock(&mutex);	
+		}//end of if	
 	}//end of while
 	pthread_mutex_lock(&mutex_debug);
 			cout << "NUM 6 I am rank " << myrank << " worker thred #" << mythrd <<"DONE!"<<endl;
