@@ -158,7 +158,8 @@ void *master_thrd(void *arg){
 	long mythrd;
 	int* wr_get[100];
 	int* wr_send[100];
-	MPI_Status mpi_status;
+	//MPI_Status mpi_status;
+	MPI_Request mpi_status;
 	int err=0;
 	int task_id;
 	int err_lock=0;
@@ -179,12 +180,12 @@ void *master_thrd(void *arg){
 
 
 	while(task_budget > 0){
-		
+		/*
 		pthread_mutex_lock(&mutex_debug);
 		cout << "PIN9 I am rank " << myrank << " master thred #" << mythrd << " sending_queue empty=" << sending_queue.empty() << " received_queue empty=" << received_queue.empty() \
 		<<"  task_budget= "<<task_budget<<endl;
 		pthread_mutex_unlock(&mutex_debug);
-		
+		*/
 
 
 		// Sending MPI message 
@@ -207,7 +208,9 @@ void *master_thrd(void *arg){
 			if (receiver_rank >= 0){
 			//pthread_mutex_lock(&mutex);
 			//received_queue.push(task_id);
+				cout <<"Ready to MPI_SEND" << endl;
 			err = MPI_Send(&task_id, 16, MPI_INT, receiver_rank, 0, MPI_COMM_WORLD);
+				cout <<"After to MPI_SEND" << endl;
 			if(err == MPI_SUCCESS){
 				pthread_mutex_lock(&mutex_debug);
 				cout << "PIN10 I am rank " << myrank << " master thred #" << mythrd <<" MPI_SEND succeed! Sent to "\
@@ -253,23 +256,61 @@ void *master_thrd(void *arg){
 		MPI_Barrier(MPI_COMM_WORLD);
 		pthread_mutex_lock(&mutex);	
 
-		err = MPI_Recv(&task_id, 256, MPI_INT, sender_rank, MPI_ANY_TAG, MPI_COMM_WORLD, &mpi_status);
+		cout <<"Ready to MPI_RECV" << endl;
+		err = MPI_Irecv(&task_id, 256, MPI_INT, sender_rank, MPI_ANY_TAG, MPI_COMM_WORLD, &mpi_status);
+		cout <<"After to MPI_RECV" << endl;
+		/*
 		pthread_mutex_lock(&mutex_debug);
 		cout << "PIN5 I am rank " << myrank << " master thred #" << mythrd <<endl;
 		pthread_mutex_unlock(&mutex_debug);
-
+		*/
 		if (err == MPI_SUCCESS){
 		//pthread_mutex_lock(&mutex);
 		//task_id = wr_get[0];
 		received_queue.push(task_id);
 		//wr_get[0] = 0;
 		pthread_mutex_unlock(&mutex);
+		/*
 		pthread_mutex_lock(&mutex_debug);
 		cout << "PIN6 I am rank " << myrank << " master thred #" << mythrd <<" MPI RECEIVED succeed! From source="\
-		<<mpi_status.MPI_SOURCE<<endl;
+		<<endl;
+		//<<mpi_status.MPI_SOURCE<<endl;
 		pthread_mutex_unlock(&mutex_debug);
+		*/
 
 		}
+		/*
+		else if(err == MPI_ERR_COMM){
+		pthread_mutex_lock(&mutex_debug);
+		cout << "Recv ERROR MPI_ERR_COMM I am rank " << myrank << " master thred #" << mythrd <<endl;
+		pthread_mutex_unlock(&mutex_debug);
+		pthread_mutex_unlock(&mutex);
+		}
+		else if(err == MPI_ERR_TYPE){
+		pthread_mutex_lock(&mutex_debug);
+		cout << "Recv ERROR MPI_ERR_TYPE I am rank " << myrank << " master thred #" << mythrd <<endl;
+		pthread_mutex_unlock(&mutex_debug);
+		pthread_mutex_unlock(&mutex);
+		}
+		else if(err == MPI_ERR_COUNT){
+		pthread_mutex_lock(&mutex_debug);
+		cout << "Recv ERROR MPI_ERR_COUNT I am rank " << myrank << " master thred #" << mythrd <<endl;
+		pthread_mutex_unlock(&mutex_debug);
+		pthread_mutex_unlock(&mutex);
+		}
+		else if(err == MPI_ERR_TAG){
+		pthread_mutex_lock(&mutex_debug);
+		cout << "Recv ERROR MPI_ERR_TAG I am rank " << myrank << " master thred #" << mythrd <<endl;
+		pthread_mutex_unlock(&mutex_debug);
+		pthread_mutex_unlock(&mutex);
+		}
+		else if(err == MPI_ERR_RANK){
+		pthread_mutex_lock(&mutex_debug);
+		cout << "Recv ERROR MPI_ERR_RANK I am rank " << myrank << " master thred #" << mythrd <<endl;
+		pthread_mutex_unlock(&mutex_debug);
+		pthread_mutex_unlock(&mutex);
+		}
+		*/
 		else{
 		pthread_mutex_lock(&mutex_debug);
 		cout << "PIN6 I am rank " << myrank << " master thred #" << mythrd <<" MPI RECEUVED fail! "<<endl;
@@ -311,12 +352,12 @@ void *worker_thrd(void *arg){
 	pthread_mutex_unlock(&mutex_debug);
 
 	while(task_budget > 0){//keep looping
-		
+		/*
 		pthread_mutex_lock(&mutex_debug);
 		cout << "NUM 1 I am rank " << myrank << " worker thred #" << mythrd << " sending_queue empty=" << sending_queue.empty() << " received_queue empty=" << received_queue.empty() \
 		<<"  task_budget= "<<task_budget<<endl;
 		pthread_mutex_unlock(&mutex_debug);
-		
+		*/
 		
 		//fetch work request from received pending queue
 		err_lock = pthread_mutex_trylock(&mutex);
