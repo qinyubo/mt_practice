@@ -187,13 +187,13 @@ void *master_thrd(void *arg){
 			task_id = sending_queue.front();
 			sending_queue.pop();
 			//wr_send[0] = task_id;
-			receiver_rank = pick_receiver();
+			//receiver_rank = pick_receiver();
 			pthread_mutex_lock(&mutex_debug);
 			cout << "PIN2 I am rank " << myrank << " master thred #" << mythrd <<endl;
 			pthread_mutex_unlock(&mutex_debug);
 		
 
-
+			/*
 			if (receiver_rank >= 0){
 			//pthread_mutex_lock(&mutex);
 			received_queue.push(task_id);
@@ -202,11 +202,13 @@ void *master_thrd(void *arg){
 				pthread_mutex_unlock(&mutex_debug);
 			}
 			else{
-				Finalize_my_task();
+				//Finalize_my_task();
 				pthread_mutex_lock(&mutex_debug);
 				cout << "PIN4 I am rank " << myrank << " master thred #" << mythrd <<endl;
 				pthread_mutex_unlock(&mutex_debug);
 			}
+			*/
+			received_queue.push(task_id);
 		pthread_mutex_unlock(&mutex);		
 		}
 		else pthread_mutex_unlock(&mutex);	
