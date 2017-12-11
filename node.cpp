@@ -51,10 +51,11 @@ int init_task_queue(){
 	received_queue.push(2);
 	sending_queue.push(1);
 
+	/*
 	pthread_mutex_lock(&mutex_debug);
 	cout << "I am at init_task_queue, sending_queue size="<<sending_queue.size()<<" received_queue size="<<received_queue.size()<<endl;
 	pthread_mutex_unlock(&mutex_debug);
-
+	*/
 	return 0;
 }
 
@@ -181,11 +182,12 @@ void *master_thrd(void *arg){
 			continue;
 		}
 		else if(!sending_queue.empty()){
+				/*
 				pthread_mutex_lock(&mutex_debug);
 				cout << "I am rank " << myrank << " master thred #" << mythrd <<" current sending_queue size="<<sending_queue.size()\
 				<<" received_queue size="<<received_queue.size()<<endl;
 				pthread_mutex_unlock(&mutex_debug);
-
+				*/
 
 			task_id = sending_queue.front();
 			sending_queue.pop();
@@ -197,20 +199,6 @@ void *master_thrd(void *arg){
 			pthread_mutex_unlock(&mutex_debug);
 			*/
 
-/*			
-			if (receiver_rank >= 0){
-
-
-				MPI_Send(&task_id, 16, MPI_INT, receiver_rank, 0, MPI_COMM_WORLD);
-				
-				pthread_mutex_lock(&mutex_debug);
-				cout << "Rank "<<myrank<< " SEND! to rank="<<receiver_rank<<endl;
-				pthread_mutex_unlock(&mutex_debug);
-			}
-			else{ //last MPI process, process all left over tasks by itself
-				Finalize_my_task();
-			}
-*/
 				if(myrank == 0){
 					receiver_rank = 1;
 				}
@@ -219,11 +207,11 @@ void *master_thrd(void *arg){
 
 
 				MPI_Send(&task_id, 16, MPI_INT, receiver_rank, 0, MPI_COMM_WORLD);
-				
+				/*
 				pthread_mutex_lock(&mutex_debug);
 				cout << "Rank "<<myrank<< " SEND! to rank="<<receiver_rank<<endl;
 				pthread_mutex_unlock(&mutex_debug);
-			
+				*/
 			pthread_mutex_unlock(&mutex);		
 			//continue;
 		}
@@ -238,18 +226,8 @@ void *master_thrd(void *arg){
 				pthread_mutex_unlock(&mutex);	
 				//continue;
 			}
-		
-
-
-	
-
 
 		//Listen for message
-		/*
-		while(!flag){ //move on till message available
-			MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &flag, &mpi_status);
-		}
-		*/
 
 			if(myrank == 0){
 				sender_rank = 1;
@@ -267,41 +245,30 @@ void *master_thrd(void *arg){
 
 				if (err == MPI_SUCCESS){
 					received_queue.push(task_id);
+						/*
 						pthread_mutex_lock(&mutex_debug);
 						cout << "Rank "<<myrank<< "RECEIVED! from rank="<<sender_rank<<endl;
 						cout << "I am rank " << myrank << " master thred #" << mythrd <<" current sending_queue size="<<sending_queue.size()\
 						<<" received_queue size="<<received_queue.size()<<endl;
 						pthread_mutex_unlock(&mutex_debug);			
-			/*
-			pthread_mutex_lock(&mutex_debug);
-			cout << "DEBUG I am rank " << myrank << " master thred #" << mythrd <<" current received_queue size="<<received_queue.size()<<endl;
-			pthread_mutex_unlock(&mutex_debug);
-			*/
+						*/
 					pthread_mutex_unlock(&mutex);
 	
 				}
 				else{
+				/*
 				pthread_mutex_lock(&mutex_debug);
 				cout << "PIN6 I am rank " << myrank << " master thred #" << mythrd <<" MPI RECEUVED fail! "<<endl;
 				pthread_mutex_unlock(&mutex_debug);
+				*/
 				pthread_mutex_unlock(&mutex);
 				}
 
 			}
-			/*
-			else if(pick_receiver() < 0){ //in case myrank is the last MPI porcess
-				cout <<"Receiver Rank "<<myrank << " in finalize place" <<endl;
-				Finalize_my_task();
-				continue;
-			}
-			*/
 			else{
 
-				continue;
-				
-			}
-			
-			
+				continue;			
+			}				
 
 	}//end of while
 }//end of master_thrd
@@ -503,13 +470,12 @@ int main(int argc, char** argv){
 */
 	MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
-	cout << "Rank " << world_rank << " finish job! Current size=" <<world_size<< endl;
+	cout << "Rank " << world_rank << " finish job!"<< endl;
 
 
 
 	MPI_Finalize();
 
-	cout << "Rank " << world_rank << " MPI_Finalize! "<< endl;
 
 	return 0;
 
