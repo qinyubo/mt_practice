@@ -171,7 +171,8 @@ void *master_thrd(void *arg){
 
 	while(task_budget > 0){
 		pthread_mutex_lock(&mutex_debug);
-		cout << "PIN9 I am rank " << myrank << " master thred #" << mythrd << " task_budget= " <<task_budget <<endl;
+		cout << "PIN9 I am rank " << myrank << " master thred #" << mythrd << << " sending_queue empty=" << sending_queue.empty() << " received_queue empty=" << received_queue.empty() \
+		<<"  task_budget= "<<task_budget<<endl;
 		pthread_mutex_unlock(&mutex_debug);
 
 
@@ -272,11 +273,12 @@ void *worker_thrd(void *arg){
 	pthread_mutex_unlock(&mutex_debug);
 
 	while(task_budget > 0){//keep looping
-		/*
+		
 		pthread_mutex_lock(&mutex_debug);
-		cout << "NUM 1 I am rank " << myrank << " worker thred #" << mythrd <<endl;
+		cout << "NUM 1 I am rank " << myrank << " worker thred #" << mythrd << " sending_queue empty=" << sending_queue.empty() << " received_queue empty=" << received_queue.empty() \
+		<<"  task_budget= "<<task_budget<<endl;
 		pthread_mutex_unlock(&mutex_debug);
-		*/
+		
 		//fetch work request from received pending queue
 		err_lock = pthread_mutex_trylock(&mutex);
 		if(err_lock == EBUSY){
